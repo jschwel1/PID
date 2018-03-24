@@ -97,7 +97,7 @@ public class Main extends JPanel implements KeyListener, ActionListener{
 			lastError = error;
 			double output = kp*error + kd*derivative + ki*integral;
 			points[t] = points[t-1] + output;
-//			System.out.println(t*timestep + ", " + points[t]+", "+error+", "+integral+", "+derivative);
+			System.out.println(t*timestep + ", " + points[t]+", "+error+", "+integral+", "+derivative);
 			
 		}
 		
@@ -154,6 +154,13 @@ public class Main extends JPanel implements KeyListener, ActionListener{
 		}
 		else {
 			d2.setProp2(d2.getProp2()-1);
+		}
+		
+		if (!rightDown && !leftDown) {
+			d2.enablePID();
+		}
+		else {
+			d2.disablePID();
 		}
 		d2.move();
 		this.repaint();
