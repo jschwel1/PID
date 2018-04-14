@@ -5,6 +5,10 @@ import java.awt.Point;
 
 public class Drone2D {
 	
+    private static final int MAX_VEL = 3;
+    private static final float MAX_ACC = 1f;
+    
+    
 	private float prop1, prop2;
 	private float theta, omega, alpha;
 	private float disp, vel, acc;
@@ -14,7 +18,7 @@ public class Drone2D {
 	private boolean pidActive;
 	
 	
-	public Drone2D() {
+	public Drone2D(float Ts) {
 		prop1 = 0;
 		prop2 = 0;
 		theta = 0f;
@@ -27,7 +31,7 @@ public class Drone2D {
 		width = 50;
 		height = 20;
 		gravity = 20;
-		Ts = 0.0001f;
+		this.Ts = Ts;
 		pidActive = false;
 	}
 	
@@ -44,7 +48,11 @@ public class Drone2D {
 //		if (theta < -Math.PI) theta += 2*Math.PI;
 		
 		acc = (yacc1 + yacc2 - gravity*Ts);
+		if (acc > MAX_ACC) acc = MAX_ACC;
+		if (acc < -MAX_ACC) acc = -MAX_ACC;
 		vel += acc;
+        if (vel > MAX_VEL) vel = MAX_VEL;
+        if (vel < -MAX_VEL) vel = -MAX_VEL;
 		disp += vel;
 		
 		if (disp <= 50) disp = 50;
@@ -59,6 +67,11 @@ public class Drone2D {
 	public void setProp2(float p) { prop2 = (p > 100?100:((p < 0?0:p))); }
 	public float getProp2() { return prop2; }
 	public float getTheta() { return theta; }
+	public float getHeight() { return disp; }
+	public float getAcc() { return acc; }
+	public float getVel() { return vel; }
+	
+	
 	public void paintDrone(Graphics2D g2) {
 		g2.setStroke(new BasicStroke(5));
 		Point[] pts = getPoints();

@@ -13,7 +13,7 @@ import javax.swing.Timer;
 
 public class Main extends JPanel implements KeyListener, ActionListener{
 	
-	Drone2D d2 = new Drone2D();
+	Drone2D d2;
 	boolean rightDown, leftDown, upDown;
 	PID_Controller anglePID;
 	public static void main(String args[]) {
@@ -33,9 +33,10 @@ public class Main extends JPanel implements KeyListener, ActionListener{
 		rightDown = false;
 		leftDown = false;
 		
-		anglePID = new PID_Controller(.001f, 5f, 0f, 0f);
-		
-		Timer clock = new Timer(10, this);
+		int Ts = 10; // Sample period in ms
+		anglePID = new PID_Controller((float)(Ts/1000.0), 1f, 1000f, 10f);
+		d2 = new Drone2D((float)(Ts/1000.0));
+		Timer clock = new Timer(Ts, this);
 		clock.start();
 	}
 	
@@ -46,28 +47,29 @@ public class Main extends JPanel implements KeyListener, ActionListener{
 		g2.setColor(Color.yellow);
 		g2.fillRect(0, 450-(int)d2.getProp2()*10, 50, (int)d2.getProp2()*10);
         g2.fillRect(50, 450-(int)d2.getProp1()*10, 100, (int)d2.getProp1()*10);
+        g2.drawLine(0, 300, 500, 300);
 	}
 	
-	public double[] PID(int start, int setpoint, double timestep, double time, double kp, double kd, 
-						double ki) {
-		double[] points = new double[(int) (time/timestep)] ;
-		points[0] = start;
-		double lastError = start - setpoint;
-		double integral = 0;
-		for (int t = 1; t < (int)(time/timestep); t++) {
-			double error = setpoint-points[t-1];
-			integral += (error * timestep);
-			double derivative = (error-lastError)*timestep;
-			lastError = error;
-			double output = kp*error + kd*derivative + ki*integral;
-			points[t] = points[t-1] + output;
-			System.out.println(t*timestep + ", " + points[t]+", "+error+", "+integral+", "+derivative);
-			
-		}
-		
-		
-		return points;
-	}
+//	public double[] PID(int start, int setpoint, double timestep, double time, double kp, double kd, 
+//						double ki) {
+//		double[] points = new double[(int) (time/timestep)] ;
+//		points[0] = start;
+//		double lastError = start - setpoint;
+//		double integral = 0;
+//		for (int t = 1; t < (int)(time/timestep); t++) {
+//			double error = setpoint-points[t-1];
+//			integral += (error * timestep);
+//			double derivative = (error-lastError)*timestep;
+//			lastError = error;
+//			double output = kp*error + kd*derivative + ki*integral;
+//			points[t] = points[t-1] + output;
+//			System.out.println(t*timestep + ", " + points[t]+", "+error+", "+integral+", "+derivative);
+//			
+//		}
+//		
+//		
+//		return points;
+//	}
 
 	@Override
 	public void keyPressed(KeyEvent e) {
@@ -108,54 +110,25 @@ public class Main extends JPanel implements KeyListener, ActionListener{
 
 	@Override
 	public void actionPerformed(ActionEvent arg0) {
-		// TODO Auto-generated method stub
-	    float delta = 0.1f;
         
         
-        if (!rightDown && !leftDown) {
-            anglePIDcontroller(anglePID.getPID(d2.getTheta(), 0), d2);
-            d2.move();
-            anglePIDcontroller(anglePID.getPID(d2.getTheta(), 0), d2);
-        }
-        else {
-    	    if (upDown){
-                d2.setProp1(d2.getProp1()+delta);
-                d2.setProp2(d2.getProp2()+delta);
-                System.out.println("p1: " + d2.getProp1() + ", p2: " + d2.getProp2());
-            }
-            else {
-        	    if (rightDown) {
-        			d2.setProp1(d2.getProp1()+delta);
-        		}
-        		else {
-        			d2.setProp1(d2.getProp1()-delta);
-        		}
-        		if (leftDown) {
-        			d2.setProp2(d2.getProp2()+delta);
-        		}
-        		else {
-        			d2.setProp2(d2.getProp2()-delta);
-        		}
-            }
-        }
-
+	    anglePIDcontroller(anglePID.getPID(d2.getHeight(), 200), d2);
 		d2.move();
 		this.repaint();
 		
 	}
 	float throttle = 2;
 	public void anglePIDcontroller(float PID, Drone2D d){
+
 	    
-	    if (upDown)
-	        throttle = (float) Math.min(100, throttle+.1);
-	    else
-	        throttle = (float) Math.max(2, throttle-.1);
-	    if (throttle-PID <0) throttle += (throttle-PID);
+	    throttle = throttle-PID/10;
+	    throttle = (throttle<5)?5:throttle;
+	    throttle = (throttle>30)?30:throttle;
+
 	    d.setProp1(throttle);
 	    d.setProp2(throttle);
-	    d.setProp1(throttle-PID);
-	    d.setProp2(throttle+PID);
-        System.out.println(PID + " " + throttle);
+	    System.out.print("Height: " + d.getHeight()+"\tacc = " + d.getAcc() + "\tvel=" + d.getVel());
+        System.out.println("\tPID: " + PID + "\tthrottle: " + throttle);
 	    
 	}
 	
