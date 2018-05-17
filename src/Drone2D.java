@@ -2,11 +2,12 @@ import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Point;
+import java.util.concurrent.Semaphore;
 
-public class Drone2D {
+public class Drone2D implements Runnable{
 	
-    private static final int MAX_VEL = 3;
-    private static final float MAX_ACC = 1f;
+    private static final int MAX_VEL = 30;
+    private static final float MAX_ACC = 10f;
     
     
 	private float prop1, prop2;
@@ -17,6 +18,9 @@ public class Drone2D {
 	private float Ts;
 	private boolean pidActive;
 	
+	
+	private Semaphore prop1Mutex;
+	private Semaphore prop2Mutex;
 	
 	public Drone2D(float Ts) {
 		prop1 = 0;
@@ -31,13 +35,19 @@ public class Drone2D {
 		width = 50;
 		height = 20;
 		gravity = 20;
-		this.Ts = Ts;
+		this.Ts = Ts/1000;
 		pidActive = false;
+		
+		prop1Mutex = new Semaphore(1);
+		prop2Mutex = new Semaphore(1);
+		
+		System.out.println("Created new drone");
 	}
 	
 	public void move() {
 		// Update angular variables
-		float yacc1 = (float) Math.abs(Math.sin(Math.PI/2 + (double)theta)*prop1*Ts);
+		/*
+	    float yacc1 = (float) Math.abs(Math.sin(Math.PI/2 + (double)theta)*prop1*Ts);
 		float yacc2 = (float) Math.abs(Math.sin(Math.PI/2 + (double)theta)*prop2*Ts);
 		alpha = yacc1-yacc2;
 		// 1% drag resistance
@@ -46,14 +56,16 @@ public class Drone2D {
 		theta += omega;
 //		if (theta > Math.PI) theta -= 2*Math.PI;
 //		if (theta < -Math.PI) theta += 2*Math.PI;
-		
-		acc = (yacc1 + yacc2 - gravity*Ts);
+		*/
+	    float yacc1 = this.getProp1();
+	    float yacc2 = this.getProp2();
+		acc = (yacc1 + yacc2)-gravity;
 		if (acc > MAX_ACC) acc = MAX_ACC;
 		if (acc < -MAX_ACC) acc = -MAX_ACC;
-		vel += acc;
+		vel += acc*Ts;
         if (vel > MAX_VEL) vel = MAX_VEL;
         if (vel < -MAX_VEL) vel = -MAX_VEL;
-		disp += vel;
+		disp += vel*Ts;
 		
 		if (disp <= 50) disp = 50;
 		if (disp >= 450) disp = 450;
@@ -62,10 +74,47 @@ public class Drone2D {
 //		System.out.println("prop1: " + prop1 + ", prop2: " + prop2 + "mult: " + Math.sin((double)theta) + " | yacc1: " + yacc1 + ", yacc2: " + yacc2 + " | alpha = " + alpha + ", omega = " + omega);
 	}
 	
-	public void setProp1(float p) { prop1 = (p > 100?100:((p < 0?0:p))); }
-	public float getProp1() { return prop1; }
-	public void setProp2(float p) { prop2 = (p > 100?100:((p < 0?0:p))); }
-	public float getProp2() { return prop2; }
+	public void setProp1(float p) { 
+	    try {
+	        prop1Mutex.acquire();
+	        prop1 = (p > 100?100:((p < 0?0:p)));    
+	        prop1Mutex.release();
+	    } catch(Exception e){
+	        e.printStackTrace();
+	    }
+	     
+	}
+	public float getProp1() { 
+	    float p=0;
+	    try {
+            prop1Mutex.acquire();
+            p=prop1;    
+            prop1Mutex.release();
+        } catch(Exception e){
+            e.printStackTrace();
+        }  
+	    return p;
+	}
+	public void setProp2(float p) { 
+	    try {
+            prop2Mutex.acquire();
+            prop2 = (p > 100?100:((p < 0?0:p)));    
+            prop2Mutex.release();
+        } catch(Exception e){
+            e.printStackTrace();
+        } 
+	}
+	public float getProp2() { 
+	    float p=0;
+        try {
+            prop2Mutex.acquire();
+            p=prop2;    
+            prop2Mutex.release();
+        } catch(Exception e){
+            e.printStackTrace();
+        }  
+        return p;
+	}
 	public float getTheta() { return theta; }
 	public float getHeight() { return disp; }
 	public float getAcc() { return acc; }
@@ -114,6 +163,18 @@ public class Drone2D {
 	}
 	private float getNormalY(float theta, float xo, float yo){
         return (float) (xo*Math.sin((double)theta) + yo*Math.cos((double) theta));
+    }
+
+    @Override
+    public void run() {
+        while(true){
+            move();
+            try {
+                Thread.sleep((int)(Ts*1000));
+            } catch(Exception e){
+                e.printStackTrace();
+            }
+        }
     }
 
 }
